@@ -12,10 +12,10 @@ import { Check } from "lucide-react";
 
 const networks = [
   { id: "1", name: "MTN", icon: "/mtn-logo.svg", color: "bg-yellow-400" },
-  { id: "4", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
+  { id: "3", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
   { id: "2", name: "Glo", icon: "/glo-logo.png", color: "bg-green-600" },
   {
-    id: "3",
+    id: "4",
     name: "9mobile",
     icon: "/9mobile-logo.png",
     color: "bg-emerald-900",

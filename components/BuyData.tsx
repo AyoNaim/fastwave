@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, Loader2, XCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,7 @@ const NETWORK_DATA = [
     color: "bg-green-500",
   },
   {
-    id: "4",
+    id: "3",
     name: "AIRTEL",
     prefixes: [
       "0802",
@@ -56,7 +56,7 @@ const NETWORK_DATA = [
     color: "bg-red-500",
   },
   {
-    id: "3",
+    id: "4",
     name: "9MOBILE",
     prefixes: ["0809", "0817", "0818", "0909", "0908"],
     icon: "/9mobile-logo.svg",
@@ -79,16 +79,72 @@ export default function BuyDataPage() {
     text: string;
   } | null>(null);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("app_theme");
-    setIsDarkMode(savedTheme !== "light");
+  const syncDataFromStorage = useCallback(() => {
     const raw = localStorage.getItem("user_session");
     if (raw) {
       const session = JSON.parse(raw);
       setBalance(session.user_data?.balance || "0.00");
     }
-    fetchPlans();
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      const raw = localStorage.getItem("user_session");
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      const phone = session.user_data?.phone || localStorage.getItem("phone");
+
+      if (!phone) throw new Error("No phone found for refresh");
+
+      const response = await fetch(
+        "https://fastwave.com.ng/app/api/user/app-refresh/index.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        try {
+          await Haptics.impact({ style: ImpactStyle.Medium });
+        } catch (e) {}
+
+        const user = result.user_data;
+        if (user) {
+          localStorage.setItem("balance", user.balance);
+          localStorage.setItem("cashback", user.cashback);
+          localStorage.setItem("full_name", user.full_name);
+          if (result.token) localStorage.setItem("token", result.token);
+
+          const updatedSession = {
+            ...session,
+            token: result.token || session.token,
+            user_data: {
+              ...session.user_data,
+              ...user,
+            },
+          };
+          localStorage.setItem("user_session", JSON.stringify(updatedSession));
+        }
+        syncDataFromStorage();
+      }
+    } catch (error) {
+      console.error("Refresh failed:", error);
+    }
+  }, [syncDataFromStorage]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("app_theme");
+    setIsDarkMode(savedTheme !== "light");
+
+    // Initial Page Load: Sync and Refresh
+    syncDataFromStorage();
+    handleRefresh();
+    fetchPlans();
+  }, [handleRefresh, syncDataFromStorage]);
 
   const fetchPlans = async () => {
     try {
@@ -180,18 +236,13 @@ export default function BuyDataPage() {
 
       const result = await response.json();
 
-      // FIX: Check for the exact fail message from your PHP back-end
       if (result.status === "success" || result.status === "successful") {
-        setBalance((prev) =>
-          (parseFloat(prev) - parseFloat(plan.userprice)).toFixed(2)
-        );
         setMessage({
           type: "success",
           text: result.msg || "Purchased Successfully!",
         });
         await Haptics.notification({ type: NotificationType.Success });
       } else {
-        // This will now catch "Insufficient Balance", "Provider Error", etc.
         setMessage({ type: "error", text: result.msg || "Transaction Failed" });
         await Haptics.notification({ type: NotificationType.Error });
       }
@@ -202,8 +253,9 @@ export default function BuyDataPage() {
       });
       await Haptics.notification({ type: NotificationType.Error });
     } finally {
+      // Refresh logic after transaction (successful or not)
+      await handleRefresh();
       setIsLoading(false);
-      // Auto-clear message after 6 seconds
       setTimeout(() => setMessage(null), 6000);
     }
   };
@@ -214,11 +266,10 @@ export default function BuyDataPage() {
 
   return (
     <div
-      className={`min-h-screen max-w-[100vw] overflow-x-hidden pt-safe pb-10 font-sans ${
+      className={`min-h-screen w-[100vw] overflow-x-hidden pt-safe pb-10 font-sans ${
         isDarkMode ? "bg-[#0f0a14] text-white" : "bg-slate-50 text-slate-900"
       }`}
     >
-      {/* Dynamic Toast Notification Container */}
       {message && (
         <div className="fixed top-10 left-5 right-5 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
           <div

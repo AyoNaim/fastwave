@@ -53,7 +53,7 @@ const TransactionPage = () => {
           }
         );
         const result = await response.json();
-        if (result.status === "success") {
+        if (result.status === "success" && Array.isArray(result.data)) {
           setTransactions(result.data);
         }
       } catch (error) {
@@ -65,37 +65,77 @@ const TransactionPage = () => {
     loadTransactions();
   }, []);
 
-  // Helper to determine if a transaction is successful
+  /**
+   * CORRECTED: Status Mapping
+   * Treats "0", "5", and "success" variants as Successful.
+   * Everything else defaults to Failed.
+   */
   const isSuccessful = (status: string | number) => {
-    const s = String(status).toLowerCase();
-    return s === "0" || s === "success" || s === "1";
+    const s = String(status).toLowerCase().trim();
+    return (
+      s === "0" ||
+      s === "5" ||
+      s === "success" ||
+      s === "successful" ||
+      s === "completed" ||
+      s.includes("succ")
+    );
   };
 
+  /**
+   * REFINED: Type Mapping
+   * Determines if the service is airtime, data, etc.
+   * used for both the list icons and the receipt data.
+   */
   const mapType = (
-    service: string
+    service: string,
+    desc: string
   ): "airtime" | "data" | "cable" | "electricity" => {
-    const s = service.toLowerCase();
-    if (s.includes("data")) return "data";
+    const combined = (service + " " + desc).toLowerCase();
+
     if (
-      s.includes("tv") ||
-      s.includes("cable") ||
-      s.includes("dstv") ||
-      s.includes("gotv")
-    )
+      combined.includes("data") ||
+      combined.includes("gb") ||
+      combined.includes("mb") ||
+      combined.includes("sme") ||
+      combined.includes("gifting")
+    ) {
+      return "data";
+    }
+    if (
+      combined.includes("tv") ||
+      combined.includes("cable") ||
+      combined.includes("dstv") ||
+      combined.includes("gotv") ||
+      combined.includes("showmax") ||
+      combined.includes("startimes")
+    ) {
       return "cable";
-    if (s.includes("electric") || s.includes("power")) return "electricity";
+    }
+    if (
+      combined.includes("electric") ||
+      combined.includes("power") ||
+      combined.includes("meter") ||
+      combined.includes("ekedc") ||
+      combined.includes("ikedc")
+    ) {
+      return "electricity";
+    }
     return "airtime";
   };
 
-  const getIcon = (service: string) => {
-    const s = service.toLowerCase();
-    if (s.includes("data")) return <Wifi className="text-blue-500" size={18} />;
-    if (s.includes("tv") || s.includes("cable"))
-      return <Tv className="text-orange-500" size={18} />;
-    if (s.includes("electric"))
+  const getIcon = (service: string, desc: string) => {
+    const type = mapType(service, desc);
+    const s = (service + " " + desc).toLowerCase();
+
+    if (type === "data") return <Wifi className="text-blue-500" size={18} />;
+    if (type === "cable") return <Tv className="text-orange-500" size={18} />;
+    if (type === "electricity")
       return <Zap className="text-yellow-500" size={18} />;
+
     if (s.includes("bonus") || s.includes("interest") || s.includes("refund"))
       return <Gift className="text-emerald-500" size={18} />;
+
     return <Smartphone className="text-zinc-400" size={18} />;
   };
 
@@ -147,6 +187,8 @@ const TransactionPage = () => {
         ) : (
           transactions.map((tx) => {
             const success = isSuccessful(tx.status);
+            const transactionType = mapType(tx.servicename, tx.servicedesc);
+
             return (
               <Dialog key={tx.transref}>
                 <DialogTrigger asChild>
@@ -162,7 +204,7 @@ const TransactionPage = () => {
                         isDarkMode ? "bg-black/40" : "bg-slate-50"
                       }`}
                     >
-                      {getIcon(tx.servicename)}
+                      {getIcon(tx.servicename, tx.servicedesc)}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -212,8 +254,9 @@ const TransactionPage = () => {
                       data={{
                         id: tx.transref,
                         amount: Math.abs(parseFloat(tx.amount)).toString(),
+                        // Explicitly pass "success" or "failed" as the receipt component expects
                         status: success ? "success" : "failed",
-                        type: mapType(tx.servicename),
+                        type: transactionType,
                         provider: tx.servicename,
                         recipient: tx.servicedesc.match(/\d+/)?.[0] || "N/A",
                         date: tx.date,

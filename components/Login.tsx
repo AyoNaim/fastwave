@@ -103,7 +103,7 @@ const Login = () => {
       <div className="min-h-screen w-full flex items-center justify-center bg-white">
         <div className="animate-pulse flex flex-col items-center">
           <img
-            src="./fastwave_logo.jpg"
+            src="./fastwave_logo.png"
             alt="logo"
             width={100}
             height={100}
@@ -146,8 +146,8 @@ const Login = () => {
           <img
             src={"./fastwave_color.png"}
             alt="logo"
-            width={140}
-            height={140}
+            width={130}
+            height={130}
           />
         </div>
 

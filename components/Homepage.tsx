@@ -66,6 +66,8 @@ export default function FintechDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  const adminPhone = "2347033578281";
+
   // Initialize with empty strings to prevent hydration mismatch
   const [userData, setUserData] = useState({
     displayName: "User",
@@ -86,7 +88,7 @@ export default function FintechDashboard() {
     if (typeof window === "undefined") return;
 
     // Check for your flat structure first, then fallback to session if needed
-    const id = localStorage.getItem("id");
+    const id = localStorage.getItem("id") || localStorage.getItem("token");
     const fullName = localStorage.getItem("full_name");
     const balance = localStorage.getItem("balance");
     const cashback = localStorage.getItem("cashback");
@@ -132,7 +134,11 @@ export default function FintechDashboard() {
 
   const handleRefresh = useCallback(async () => {
     try {
-      const phone = userData.phone;
+      const raw = localStorage.getItem("user_session");
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      const phone = session.user_data?.phone || localStorage.getItem("phone");
+
       if (!phone) throw new Error("No phone found for refresh");
 
       const response = await fetch(
@@ -151,14 +157,24 @@ export default function FintechDashboard() {
           await Haptics.impact({ style: ImpactStyle.Medium });
         } catch (e) {}
 
-        // Map returned data to your flat storage keys
         const user = result.user_data;
         if (user) {
+          // 1. Update flat keys
           localStorage.setItem("balance", user.balance);
           localStorage.setItem("cashback", user.cashback);
           localStorage.setItem("full_name", user.full_name);
-          // Update token if returned
           if (result.token) localStorage.setItem("token", result.token);
+
+          // 2. Update user_session object to maintain synchronization
+          const updatedSession = {
+            ...session,
+            token: result.token || session.token,
+            user_data: {
+              ...session.user_data,
+              ...user,
+            },
+          };
+          localStorage.setItem("user_session", JSON.stringify(updatedSession));
         }
 
         syncDataFromStorage();
@@ -185,7 +201,7 @@ export default function FintechDashboard() {
     return () => {
       ptr.destroy();
     };
-  }, [handleRefresh]); // Only re-run if handleRefresh changes
+  }, [handleRefresh]);
 
   const handleTransferCashback = async () => {
     setIsProcessingTransfer(true);
@@ -193,7 +209,11 @@ export default function FintechDashboard() {
       await Haptics.impact({ style: ImpactStyle.Medium });
     } catch (e) {}
     try {
-      const phone = localStorage.getItem("phone");
+      const raw = localStorage.getItem("user_session");
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      const phone = session.user_data?.phone;
+
       if (!phone) return;
 
       const response = await fetch(
@@ -218,6 +238,11 @@ export default function FintechDashboard() {
     }
   };
 
+  // --- ADDED: AUTO-REFRESH ON ARRIVAL ---
+  useEffect(() => {
+    handleRefresh();
+  }, [handleRefresh]);
+
   useEffect(() => {
     syncDataFromStorage();
 
@@ -228,9 +253,11 @@ export default function FintechDashboard() {
     // Timer for greeting
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
-    // Cross-tab sync: Update dashboard if user updates profile in another tab
+    // Cross-tab sync
     const handleStorageChange = (e: StorageEvent) => {
-      if (["balance", "cashback", "full_name"].includes(e.key!)) {
+      if (
+        ["balance", "cashback", "full_name", "user_session"].includes(e.key!)
+      ) {
         syncDataFromStorage();
       }
     };
@@ -260,7 +287,7 @@ export default function FintechDashboard() {
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-500 pb-32 pt-safe px-6 ${
+      className={`min-h-screen w-[100vw] transition-colors duration-500 pb-32 pt-safe px-6 ${
         isDarkMode ? "bg-[#0f0a14] text-white" : "bg-slate-50 text-slate-900"
       }`}
     >
@@ -299,13 +326,13 @@ export default function FintechDashboard() {
                   </p>
                   <p className="text-4xl font-bold">₦{userData.cashback}</p>
                 </div>
-                <Button
+                <button
                   onClick={() => setActiveModal("action")}
-                  className="w-full py-7 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg active:scale-95 transition-transform"
+                  className="w-full py-7 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
                 >
-                  <ArrowRightLeft className="mr-2 h-5 w-5" /> Transfer to Main
+                  <ArrowRightLeft className="h-5 w-5" /> Transfer to Main
                   Balance
-                </Button>
+                </button>
               </div>
             )}
 
@@ -554,7 +581,6 @@ export default function FintechDashboard() {
             try {
               await Haptics.impact({ style: ImpactStyle.Medium });
             } catch (e) {}
-            const adminPhone = "23481671426";
             window.open(
               `https://wa.me/${adminPhone}?text=hey there, i want to exchange my airtime for cash`,
               "_blank"
@@ -591,7 +617,7 @@ export default function FintechDashboard() {
               await Haptics.impact({ style: ImpactStyle.Medium });
             } catch (e) {}
             window.open(
-              `https://wa.me/23481671426?text=${encodeURIComponent(
+              `https://wa.me/${adminPhone}?text=${encodeURIComponent(
                 "Hello, I am using the Fastwave App. I would like to suggest a new service: "
               )}`,
               "_blank"
@@ -624,7 +650,7 @@ export default function FintechDashboard() {
             } catch (e) {}
             const userName = userData.displayName || "User";
             window.open(
-              `https://wa.me/23481671426?text=${encodeURIComponent(
+              `https://wa.me/${adminPhone}?text=${encodeURIComponent(
                 `Hello Admin, I am ${userName}. I need assistance with the Fastwave App.`
               )}`,
               "_blank"

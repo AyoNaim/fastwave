@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
   Mail,
@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   AtSign,
   Wallet,
+  RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
@@ -18,6 +19,7 @@ export default function ProfilePage() {
   // NUCLEAR FIX: Initialize state directly from localStorage if possible to prevent flash
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [userData, setUserData] = useState({
     full_name: "Loading...",
     username: "...",
@@ -26,13 +28,7 @@ export default function ProfilePage() {
     joined: "...",
   });
 
-  useEffect(() => {
-    // 1. Theme Sync - Immediate check
-    const savedTheme = localStorage.getItem("app_theme");
-    const dark = savedTheme !== "light";
-    setIsDarkMode(dark);
-
-    // 2. Data Fetch from Local Storage
+  const syncDataFromStorage = useCallback(() => {
     const raw = localStorage.getItem("user_session");
     if (raw) {
       const session = JSON.parse(raw);
@@ -46,8 +42,73 @@ export default function ProfilePage() {
         joined: data.created_at || "Member",
       });
     }
-    setLoading(false);
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const raw = localStorage.getItem("user_session");
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      const phone = session.user_data?.phone || localStorage.getItem("phone");
+
+      if (!phone) throw new Error("No phone found for refresh");
+
+      const response = await fetch(
+        "https://fastwave.com.ng/app/api/user/app-refresh/index.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        try {
+          await Haptics.impact({ style: ImpactStyle.Medium });
+        } catch (e) {}
+
+        const user = result.user_data;
+        if (user) {
+          // 1. Update flat keys
+          localStorage.setItem("balance", user.balance);
+          localStorage.setItem("cashback", user.cashback);
+          localStorage.setItem("full_name", user.full_name);
+          if (result.token) localStorage.setItem("token", result.token);
+
+          // 2. Update user_session object to maintain synchronization
+          const updatedSession = {
+            ...session,
+            token: result.token || session.token,
+            user_data: {
+              ...session.user_data,
+              ...user,
+            },
+          };
+          localStorage.setItem("user_session", JSON.stringify(updatedSession));
+        }
+
+        syncDataFromStorage();
+      }
+    } catch (error) {
+      console.error("Refresh failed:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [syncDataFromStorage]);
+
+  useEffect(() => {
+    // 1. Theme Sync - Immediate check
+    const savedTheme = localStorage.getItem("app_theme");
+    const dark = savedTheme !== "light";
+    setIsDarkMode(dark);
+
+    // 2. Data Fetch from Local Storage
+    syncDataFromStorage();
+    setLoading(false);
+  }, [syncDataFromStorage]);
 
   const handleLogout = async () => {
     await Haptics.impact({ style: ImpactStyle.Heavy });
@@ -165,13 +226,26 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-black tracking-tighter italic">
           {userData.full_name}
         </h1>
-        <p
-          className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-1 ${
-            isDarkMode ? "text-zinc-600" : "text-slate-400"
-          }`}
-        >
-          @{userData.username}
-        </p>
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <p
+            className={`text-[10px] font-bold uppercase tracking-[0.2em] ${
+              isDarkMode ? "text-zinc-600" : "text-slate-400"
+            }`}
+          >
+            @{userData.username}
+          </p>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className={`p-1 rounded-full transition-all active:scale-95 ${
+              isRefreshing
+                ? "animate-spin opacity-50"
+                : "opacity-30 hover:opacity-100"
+            }`}
+          >
+            <RotateCw size={12} />
+          </button>
+        </div>
       </div>
 
       {/* Information Grid */}

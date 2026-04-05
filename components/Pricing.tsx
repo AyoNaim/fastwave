@@ -123,7 +123,7 @@ export default function PricingsPage() {
   // REUSABLE UI WRAPPER FOR TABLES
   const TableContainer = ({ children }: { children: React.ReactNode }) => (
     <div
-      className={`rounded-[2.5rem] overflow-hidden border ${
+      className={`rounded-[2.5rem] overflow-x-auto border ${
         isDarkMode
           ? "bg-[#1c1425] border-white/5"
           : "bg-white border-slate-100 shadow-xl"
@@ -133,7 +133,7 @@ export default function PricingsPage() {
     </div>
   );
 
-  const Header = ({ h1, h2, h3 }: any) => (
+  const Header = ({ h1, h2, h3, h4, h5 }: any) => (
     <TableHeader className={isDarkMode ? "bg-white/5" : "bg-slate-50/50"}>
       <TableRow className="border-none">
         <TableHead className="font-black text-[9px] uppercase tracking-widest px-6 h-12">
@@ -142,6 +142,16 @@ export default function PricingsPage() {
         <TableHead className="font-black text-[9px] uppercase tracking-widest h-12">
           {h2}
         </TableHead>
+        {h4 && (
+          <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
+            {h4}
+          </TableHead>
+        )}
+        {h5 && (
+          <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
+            {h5}
+          </TableHead>
+        )}
         <TableHead className="font-black text-[9px] uppercase tracking-widest text-right px-6 h-12">
           {h3}
         </TableHead>
@@ -247,7 +257,13 @@ export default function PricingsPage() {
               {/* DATA TAB */}
               <TabsContent value="data">
                 <TableContainer>
-                  <Header h1="Network" h2="Plan" h3="Price" />
+                  <Header
+                    h1="Network"
+                    h2="Plan"
+                    h4="AGENT PRICE"
+                    h5="VENDOR PRICE"
+                    h3="USER PRICE"
+                  />
                   <TableBody>
                     {filtered(dataPlans).map((item: any, i) => (
                       <TableRow
@@ -267,6 +283,12 @@ export default function PricingsPage() {
                         </TableCell>
                         <TableCell className="text-[13px] font-bold">
                           {item.name || item.plan_name}
+                        </TableCell>
+                        <TableCell className="text-center text-[13px] font-bold opacity-70">
+                          ₦{item.agentprice}
+                        </TableCell>
+                        <TableCell className="text-center text-[13px] font-bold opacity-70">
+                          ₦{item.vendorprice}
                         </TableCell>
                         <TableCell className="text-right px-6 font-black text-emerald-500">
                           ₦{item.price || item.userprice}
@@ -313,7 +335,13 @@ export default function PricingsPage() {
               {/* CABLE TAB */}
               <TabsContent value="cable">
                 <TableContainer>
-                  <Header h1="Provider" h2="Package" h3="Price" />
+                  <Header
+                    h1="Provider"
+                    h2="Package"
+                    h4="AGENT PRICE"
+                    h5="VENDOR PRICE"
+                    h3="USER PRICE"
+                  />
                   <TableBody>
                     {filtered(cablePlans).map((item: any, i) => (
                       <TableRow
@@ -333,6 +361,12 @@ export default function PricingsPage() {
                         </TableCell>
                         <TableCell className="text-[13px] font-bold">
                           {item.name}
+                        </TableCell>
+                        <TableCell className="text-center text-[13px] font-bold opacity-70">
+                          ₦{item.agentprice}
+                        </TableCell>
+                        <TableCell className="text-center text-[13px] font-bold opacity-70">
+                          ₦{item.vendorprice}
                         </TableCell>
                         <TableCell className="text-right px-6 font-black text-emerald-500">
                           ₦{item.userprice || item.price}

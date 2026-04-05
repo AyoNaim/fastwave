@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Smartphone,
@@ -7,6 +7,7 @@ import {
   Tv,
   Zap,
   Copy,
+  Check,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -34,27 +35,33 @@ export default function TransactionReceipt({
   data,
   isDark = true,
 }: ReceiptProps) {
+  const [copied, setCopied] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+
+  /**
+   * Standardized Status UI Logic
+   */
   const getStatusConfig = () => {
     switch (data.status) {
       case "success":
         return {
           color: "text-emerald-500",
           bg: "bg-emerald-500/10",
-          icon: <CheckCircle2 size={14} />,
+          icon: <CheckCircle2 size={18} />,
           label: "Successful",
         };
       case "pending":
         return {
           color: "text-amber-500",
           bg: "bg-amber-500/10",
-          icon: <Clock size={14} />,
+          icon: <Clock size={18} />,
           label: "Processing",
         };
       default:
         return {
           color: "text-rose-500",
           bg: "bg-rose-500/10",
-          icon: <AlertCircle size={14} />,
+          icon: <AlertCircle size={18} />,
           label: "Failed",
         };
     }
@@ -62,27 +69,51 @@ export default function TransactionReceipt({
 
   const status = getStatusConfig();
 
-  const getIcon = () => {
-    const iconSize = 24;
+  /**
+   * Service Icon Logic
+   */
+  const getServiceIcon = () => {
+    const iconSize = 28;
     switch (data.type) {
-      case "airtime":
-        return <Smartphone size={iconSize} />;
       case "data":
         return <Wifi size={iconSize} />;
       case "cable":
         return <Tv size={iconSize} />;
-      default:
+      case "electricity":
         return <Zap size={iconSize} />;
+      default:
+        return <Smartphone size={iconSize} />;
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    setCopied(true);
+    setShowToast(true);
+
+    // Reset states after delay
+    setTimeout(() => {
+      setCopied(false);
+      setShowToast(false);
+    }, 2000);
   };
 
   return (
-    <div className="relative group">
-      <div className="absolute -top-12 right-0">
+    <div className="relative group p-4 sm:p-0">
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="bg-emerald-500 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-2">
+            <Check size={14} strokeWidth={3} />
+            <span className="text-xs font-black uppercase tracking-widest">
+              Reference Copied
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Close Button positioned above the receipt */}
+      <div className="absolute -top-12 right-4 sm:right-0">
         <DialogClose asChild>
           <Button
             size="icon"
@@ -97,6 +128,7 @@ export default function TransactionReceipt({
         </DialogClose>
       </div>
 
+      {/* Main Receipt Card */}
       <div
         className={`p-6 rounded-[2.5rem] transition-all border shadow-2xl ${
           isDark
@@ -104,11 +136,12 @@ export default function TransactionReceipt({
             : "bg-white text-slate-900 border-slate-100"
         }`}
       >
+        {/* Header Section: Icon, Provider, Amount */}
         <div className="flex flex-col items-center text-center mb-8">
           <div
-            className={`w-16 h-16 ${status.bg} rounded-full flex items-center justify-center ${status.color} mb-4`}
+            className={`w-20 h-20 ${status.bg} rounded-full flex items-center justify-center ${status.color} mb-4 shadow-inner`}
           >
-            {getIcon()}
+            {getServiceIcon()}
           </div>
 
           <h2
@@ -119,18 +152,19 @@ export default function TransactionReceipt({
             {data.provider || "Transaction Receipt"}
           </h2>
 
-          <div className="text-4xl font-black tracking-tighter mb-2">
+          <div className="text-4xl font-black tracking-tighter mb-3">
             ₦{parseFloat(data.amount).toLocaleString()}
           </div>
 
           <div
-            className={`flex items-center gap-1.5 ${status.bg} ${status.color} px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider`}
+            className={`flex items-center gap-1.5 ${status.bg} ${status.color} px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-wider`}
           >
             {status.icon}
             {status.label}
           </div>
         </div>
 
+        {/* Details Table */}
         <div
           className={`rounded-3xl p-6 border ${
             isDark
@@ -145,7 +179,7 @@ export default function TransactionReceipt({
               isDark={isDark}
             />
             <DetailRow
-              label="Type"
+              label="Service Type"
               value={data.type.charAt(0).toUpperCase() + data.type.slice(1)}
               isDark={isDark}
             />
@@ -153,6 +187,7 @@ export default function TransactionReceipt({
 
             <Separator className={isDark ? "bg-white/5" : "bg-slate-200"} />
 
+            {/* Transaction Reference Section */}
             <div className="flex justify-between items-start pt-2">
               <div className="flex flex-col">
                 <span
@@ -160,32 +195,51 @@ export default function TransactionReceipt({
                     isDark ? "text-zinc-500" : "text-slate-400"
                   }`}
                 >
-                  Transaction No.
+                  Transaction Ref
                 </span>
-                <span className="text-[12px] font-mono opacity-80 break-all max-w-[180px]">
+                <span className="text-[12px] font-mono opacity-80 break-all max-w-[200px] leading-tight select-none">
                   {data.ref}
                 </span>
               </div>
               <Button
                 variant="ghost"
-                size="icon"
+                size={copied ? "default" : "icon"}
                 onClick={() => copyToClipboard(data.ref)}
-                className={`h-8 w-8 rounded-full ${
-                  isDark ? "hover:bg-white/5" : "hover:bg-black/5"
+                className={`h-9 rounded-full shrink-0 transition-all ${
+                  copied
+                    ? "px-3 bg-emerald-500/10 text-emerald-500"
+                    : isDark
+                    ? "hover:bg-white/5 text-zinc-400 w-9"
+                    : "hover:bg-black/5 text-slate-500 w-9"
                 }`}
               >
-                <Copy size={14} />
+                {copied ? (
+                  <div className="flex items-center gap-1">
+                    <Check size={14} />
+                    <span className="text-[10px] font-black uppercase">
+                      Copied
+                    </span>
+                  </div>
+                ) : (
+                  <Copy size={16} />
+                )}
               </Button>
             </div>
           </div>
         </div>
 
+        {/* Cashback / Bonus Section */}
         {data.status === "success" && data.cashback && (
           <div className="mt-4 flex justify-between items-center px-5 py-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-              Bonus Earned
-            </span>
-            <span className="text-sm font-black text-emerald-500">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">
+                Bonus Earned
+              </span>
+              <span className="text-[9px] text-emerald-500/60 font-medium italic">
+                Added to your bonus wallet
+              </span>
+            </div>
+            <span className="text-lg font-black text-emerald-500">
               +₦{data.cashback}
             </span>
           </div>
@@ -195,6 +249,9 @@ export default function TransactionReceipt({
   );
 }
 
+/**
+ * Reusable row for detail items
+ */
 function DetailRow({
   label,
   value,
@@ -205,15 +262,17 @@ function DetailRow({
   isDark: boolean;
 }) {
   return (
-    <div className="flex justify-between items-center">
+    <div className="flex justify-between items-center gap-4">
       <span
-        className={`text-[10px] font-bold uppercase tracking-wider ${
+        className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ${
           isDark ? "text-zinc-500" : "text-slate-400"
         }`}
       >
         {label}
       </span>
-      <span className="text-sm font-black tracking-tight">{value}</span>
+      <span className="text-[13px] font-black tracking-tight text-right truncate">
+        {value}
+      </span>
     </div>
   );
 }

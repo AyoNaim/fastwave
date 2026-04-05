@@ -163,9 +163,9 @@ export default function PersonalDetailsScreen() {
           },
         };
 
-        localStorage.setItem("user_token", storageData.token);
+        localStorage.setItem("userToken", storageData.token);
         localStorage.setItem(
-          "user_data",
+          "user_session",
           JSON.stringify(storageData.user_data)
         );
 

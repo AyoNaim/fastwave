@@ -8,7 +8,7 @@ import {
   Banknote,
   Landmark,
   History,
-  RefreshCw,
+  RotateCw,
   Copy,
   CheckCircle2,
   ShieldCheck,
@@ -64,13 +64,72 @@ export default function FundAccountPage() {
     text: string;
   } | null>(null);
 
-  const fetchData = useCallback(async () => {
+  // Synchronize state from LocalStorage
+  const syncDataFromStorage = useCallback(() => {
     const raw = localStorage.getItem("user_session");
-    const token = localStorage.getItem("userToken");
-    if (!raw || !token) return;
+    if (raw) {
+      const session = JSON.parse(raw);
+      setBalance(parseFloat(session.user_data?.balance || "0").toFixed(2));
+    }
+  }, []);
 
-    const session = JSON.parse(raw);
-    setBalance(parseFloat(session.user_data?.balance || "0").toFixed(2));
+  // Centralized Refresh Logic (Matching Profile Page)
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const raw = localStorage.getItem("user_session");
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      const phone = session.user_data?.phone || localStorage.getItem("phone");
+
+      if (!phone) throw new Error("No phone found for refresh");
+
+      const response = await fetch(
+        "https://fastwave.com.ng/app/api/user/app-refresh/index.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        try {
+          await Haptics.impact({ style: ImpactStyle.Medium });
+        } catch (e) {}
+
+        const user = result.user_data;
+        if (user) {
+          localStorage.setItem("balance", user.balance);
+          localStorage.setItem("full_name", user.full_name);
+          if (result.token) localStorage.setItem("token", result.token);
+
+          const updatedSession = {
+            ...session,
+            token: result.token || session.token,
+            user_data: {
+              ...session.user_data,
+              ...user,
+            },
+          };
+          localStorage.setItem("user_session", JSON.stringify(updatedSession));
+        }
+        syncDataFromStorage();
+      }
+    } catch (error) {
+      console.error("Refresh failed:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [syncDataFromStorage]);
+
+  // Initial Data Fetch
+  const fetchData = useCallback(async () => {
+    syncDataFromStorage();
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
 
     try {
       const response = await fetch(API_BASE_URL, {
@@ -90,19 +149,13 @@ export default function FundAccountPage() {
     } catch (error) {
       console.error("Failed to load accounts:", error);
     }
-  }, []);
+  }, [syncDataFromStorage]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("app_theme");
     setIsDarkMode(savedTheme !== "light");
     fetchData();
   }, [fetchData]);
-
-  const refreshBalance = async () => {
-    setIsRefreshing(true);
-    await fetchData();
-    setTimeout(() => setIsRefreshing(false), 800);
-  };
 
   const copyToClipboard = async (text: string, field: string) => {
     if (!text) return;
@@ -191,7 +244,6 @@ export default function FundAccountPage() {
           text: result.msg || "Proof submitted successfully!",
         });
 
-        // Delay closing so user sees the success state
         setTimeout(() => {
           setShowVerifyModal(false);
           setShowManualModal(false);
@@ -210,7 +262,6 @@ export default function FundAccountPage() {
       await Haptics.notification({ type: NotificationType.Error });
     } finally {
       setIsSubmittingManual(false);
-      // Auto-clear error messages after 5 seconds
       if (message?.type === "error") {
         setTimeout(() => setMessage(null), 5000);
       }
@@ -246,7 +297,6 @@ export default function FundAccountPage() {
         </Button>
       </header>
 
-      {/* Premium Dynamic Toast Notification */}
       {message && (
         <div className="fixed top-10 left-5 right-5 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
           <div
@@ -283,13 +333,17 @@ export default function FundAccountPage() {
             >
               Available Balance
             </p>
-            <RefreshCw
-              size={12}
-              className={`cursor-pointer ${
-                isRefreshing ? "animate-spin" : ""
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`p-1 rounded-full transition-all active:scale-90 ${
+                isRefreshing
+                  ? "animate-spin opacity-100"
+                  : "opacity-40 hover:opacity-100"
               } ${isDarkMode ? "text-zinc-500" : "text-slate-400"}`}
-              onClick={refreshBalance}
-            />
+            >
+              <RotateCw size={12} />
+            </button>
           </div>
           <h2
             className={`text-4xl font-black tracking-tight z-10 ${
@@ -371,17 +425,17 @@ export default function FundAccountPage() {
                     instantly.
                   </p>
                 </div>
-                <Button
+                <button
                   onClick={handleGenerateAccount}
                   disabled={isGenerating}
-                  className="w-full h-12 rounded-full bg-blue-600 text-white font-bold"
+                  className="w-full h-12 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center"
                 >
                   {isGenerating ? (
                     <Loader2 className="animate-spin mr-2" />
                   ) : (
                     "Generate Accounts"
                   )}
-                </Button>
+                </button>
               </div>
             ) : (
               <div className="space-y-4">
