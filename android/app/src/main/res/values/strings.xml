@@ -1,7 +1,7 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <string name="app_name">Fastwave</string>
     <string name="title_activity_main">Fastwave</string>
-    <string name="package_name">com.fastwave.app</string>
-    <string name="custom_url_scheme">com.fastwave.app</string>
+    <string name="package_name">com.fix.fastwave</string>
+    <string name="custom_url_scheme">com.fix.fastwave</string>
 </resources>
