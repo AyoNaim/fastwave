@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, Loader2, Wallet } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronLeft, Loader2, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
@@ -10,10 +10,10 @@ import { detectNetwork } from "@/utils/network-detector";
 
 const networkList = [
   { id: "1", name: "MTN", icon: "/mtn-logo.svg", color: "bg-yellow-400" },
-  { id: "3", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
+  { id: "4", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
   { id: "2", name: "Glo", icon: "/glo-logo.png", color: "bg-green-600" },
   {
-    id: "4",
+    id: "3",
     name: "9mobile",
     icon: "/9mobile-logo.png",
     color: "bg-emerald-900",
@@ -32,6 +32,11 @@ export default function BuyAirtimePage() {
     type: "error" | "success";
     text: string;
   } | null>(null);
+
+  // --- PIN MODAL STATES & REFS ---
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState(["", "", "", "", ""]);
+  const pinInputs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Sync data from local storage to state
   const syncDataFromStorage = useCallback(() => {
@@ -119,16 +124,52 @@ export default function BuyAirtimePage() {
     }
   };
 
-  const handlePurchase = async () => {
+  // --- PIN INPUT LOGIC ---
+  const handlePinChange = (value: string, index: number) => {
+    if (isNaN(Number(value)) && value !== "") return;
+    const newPin = [...pin];
+    newPin[index] = value.substring(value.length - 1);
+    setPin(newPin);
+
+    // Auto-focus next input
+    if (value && index < 4) {
+      pinInputs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    // Handle Backspace
+    if (e.key === "Backspace" && !pin[index] && index > 0) {
+      pinInputs.current[index - 1]?.focus();
+    }
+    // Allow pressing Enter to verify
+    if (e.key === "Enter" && pin.every((d) => d !== "")) {
+      handlePurchase();
+    }
+  };
+
+  // --- TRIGGER MODAL ---
+  const initiatePurchase = () => {
     if (phoneNumber.length < 10) {
       setMessage({ type: "error", text: "Please enter a valid phone number" });
       return;
     }
-    // Changed minimum amount to 100
     if (!amount || Number(amount) < 100) {
       setMessage({ type: "error", text: "Minimum amount is ₦100" });
       return;
     }
+
+    // Everything is valid, show the PIN modal
+    setMessage(null);
+    setShowPinModal(true);
+    // Slight delay to allow modal to render before focusing first input
+    setTimeout(() => pinInputs.current[0]?.focus(), 100);
+  };
+
+  // --- COMPLETE PURCHASE (API CALL) ---
+  const handlePurchase = async () => {
+    const fullPin = pin.join("");
+    if (fullPin.length < 5) return;
 
     setIsLoading(true);
     setMessage(null);
@@ -150,10 +191,11 @@ export default function BuyAirtimePage() {
         token: userToken,
         airtime_type: "VTU",
         ref: `AIR_${Date.now()}`,
+        pin: fullPin, // <-- PIN Added to the payload
       };
 
       const response = await fetch(
-        "https://fastwave.com.ng/app/api/airtime/index.php",
+        "https://fastwave.com.ng/api/airtime_test/index.php",
         {
           method: "POST",
           headers: {
@@ -177,14 +219,14 @@ export default function BuyAirtimePage() {
         );
       }
 
-      // Handle the complex nested response format provided in the prompt
+      // Handle the complex nested response format
       const controllerData = result.controller_output || {};
       const statusFromBackend = controllerData.status || result.status;
 
       let displayMessage =
         result.msg || controllerData.msg || "Transaction failed";
 
-      // If there is an api_response_log (which is a stringified JSON), parse it to get the real error
+      // Parse nested log for accurate error messages
       if (controllerData.api_response_log) {
         try {
           const innerLog = JSON.parse(controllerData.api_response_log);
@@ -192,23 +234,29 @@ export default function BuyAirtimePage() {
             displayMessage = innerLog.msg;
           }
         } catch (e) {
-          // fallback to the previous displayMessage if parsing fails
+          // fallback
         }
       }
 
       if (statusFromBackend === "success") {
+        const transRef = result.trans_ref;
         setMessage({
           type: "success",
           text: displayMessage || "Airtime purchase successful!",
         });
         setAmount("");
         await Haptics.notification({ type: NotificationType.Success });
+        setShowPinModal(false); // Close modal on success
+        setPin(["", "", "", "", ""]); // Reset pin
+        setTimeout(() => router.push(`/transactions?ref=${transRef}`), 5000);
       } else {
         setMessage({
           type: "error",
           text: displayMessage,
         });
         await Haptics.notification({ type: NotificationType.Error });
+        setShowPinModal(false); // Close modal so user can see error
+        setPin(["", "", "", "", ""]); // Reset pin
       }
     } catch (err: any) {
       setMessage({
@@ -216,6 +264,7 @@ export default function BuyAirtimePage() {
         text: err.message || "Could not connect to server.",
       });
       await Haptics.notification({ type: NotificationType.Error });
+      setShowPinModal(false);
     } finally {
       // Refresh user state regardless of success or failure
       await handleRefresh();
@@ -225,7 +274,7 @@ export default function BuyAirtimePage() {
 
   return (
     <div
-      className={`min-h-screen w-[100vw] transition-colors duration-500 pt-safe pb-10 font-sans ${
+      className={`min-h-screen w-[100vw] transition-colors duration-500 pt-safe pb-10 font-sans relative ${
         isDarkMode ? "bg-[#0f0a14] text-white" : "bg-slate-50 text-slate-900"
       }`}
     >
@@ -368,7 +417,7 @@ export default function BuyAirtimePage() {
         )}
 
         <Button
-          onClick={handlePurchase}
+          onClick={initiatePurchase}
           disabled={isLoading || !amount || !phoneNumber}
           className={`w-full h-16 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all active:scale-95 flex gap-3 ${
             isDarkMode
@@ -386,6 +435,89 @@ export default function BuyAirtimePage() {
           )}
         </Button>
       </div>
+
+      {/* --- PIN MODAL UI --- */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className={`w-full max-w-[380px] rounded-[32px] p-8 shadow-2xl relative animate-in zoom-in-95 duration-300 ${
+              isDarkMode ? "bg-[#1c1425] border border-white/10" : "bg-white"
+            }`}
+          >
+            <button
+              onClick={() => {
+                setShowPinModal(false);
+                setPin(["", "", "", "", ""]);
+              }}
+              className={`absolute right-6 top-6 transition-colors ${
+                isDarkMode
+                  ? "text-zinc-500 hover:text-white"
+                  : "text-gray-400 hover:text-black"
+              }`}
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div className="flex flex-col items-center">
+              <h2
+                className={`text-2xl font-black mb-2 text-center ${
+                  isDarkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                Enter PIN
+              </h2>
+              <p
+                className={`text-sm text-center mb-8 ${
+                  isDarkMode ? "text-zinc-400" : "text-gray-500"
+                }`}
+              >
+                Please enter your 5-digit transaction PIN to confirm your
+                purchase.
+              </p>
+
+              {/* OTP Input Group */}
+              <div className="flex justify-between gap-2 mb-8 w-full">
+                {pin.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => {
+                      pinInputs.current[idx] = el;
+                    }}
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handlePinChange(e.target.value, idx)}
+                    onKeyDown={(e) => handleKeyDown(e, idx)}
+                    className={`w-12 h-14 text-center text-2xl font-black border-2 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all ${
+                      isDarkMode
+                        ? "bg-[#0f0a14] border-white/5 text-white focus:bg-[#150f1d]"
+                        : "bg-gray-50 border-gray-100 text-black focus:bg-white"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                onClick={handlePurchase}
+                disabled={pin.some((d) => !d) || isLoading}
+                className={`w-full h-14 mt-2 rounded-2xl font-bold transition-all active:scale-[0.98] ${
+                  isDarkMode
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20"
+                    : "bg-gray-900 text-white hover:bg-black shadow-xl shadow-gray-900/10"
+                }`}
+              >
+                {isLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  "Confirm & Pay"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

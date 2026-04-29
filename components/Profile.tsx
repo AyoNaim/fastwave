@@ -8,6 +8,7 @@ import {
   AtSign,
   Wallet,
   RotateCw,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
@@ -25,6 +26,7 @@ export default function ProfilePage() {
     username: "...",
     phone: "...",
     balance: "...",
+    level: "Member",
     joined: "...",
   });
 
@@ -39,6 +41,7 @@ export default function ProfilePage() {
           data.full_name?.toLowerCase().replace(/\s+/g, "_") || "user_unknown",
         phone: data.phone || "No phone linked",
         balance: data.balance || "0.00",
+        level: data.level || "Member",
         joined: data.created_at || "Member",
       });
     }
@@ -76,6 +79,7 @@ export default function ProfilePage() {
           localStorage.setItem("balance", user.balance);
           localStorage.setItem("cashback", user.cashback);
           localStorage.setItem("full_name", user.full_name);
+          localStorage.setItem("level", user.level);
           if (result.token) localStorage.setItem("token", result.token);
 
           // 2. Update user_session object to maintain synchronization
@@ -122,10 +126,12 @@ export default function ProfilePage() {
     icon: Icon,
     label,
     value,
+    highlight = false,
   }: {
     icon: any;
     label: string;
     value: string;
+    highlight?: boolean;
   }) => (
     <div
       className={`p-5 rounded-[1.5rem] border transition-all flex items-center gap-4 ${
@@ -137,7 +143,7 @@ export default function ProfilePage() {
       <div
         className={`h-11 w-11 rounded-xl flex items-center justify-center ${
           isDarkMode ? "bg-white/5 text-zinc-400" : "bg-slate-50 text-slate-400"
-        }`}
+        } ${highlight ? "text-emerald-500" : ""}`}
       >
         <Icon size={18} />
       </div>
@@ -147,7 +153,13 @@ export default function ProfilePage() {
         >
           {label}
         </p>
-        <p className="text-sm font-black tracking-tight truncate">{value}</p>
+        <p
+          className={`text-sm font-black tracking-tight truncate ${
+            highlight ? "text-emerald-500" : ""
+          }`}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
@@ -212,7 +224,6 @@ export default function ProfilePage() {
           >
             {userData.full_name.charAt(0)}
           </div>
-          {/* NUCLEAR FIX: Border color tied to background state */}
           <div
             className={`absolute -bottom-1 -right-1 h-7 w-7 rounded-full border-4 flex items-center justify-center ${
               isDarkMode
@@ -250,6 +261,12 @@ export default function ProfilePage() {
 
       {/* Information Grid */}
       <main className="px-5 space-y-3 max-w-md mx-auto">
+        <ProfileItem
+          icon={ShieldCheck}
+          label="Account Status"
+          value={userData.level}
+          highlight={true}
+        />
         <ProfileItem
           icon={AtSign}
           label="Username"

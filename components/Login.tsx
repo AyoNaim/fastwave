@@ -143,12 +143,7 @@ const Login = () => {
               strokeLinecap="round"
             />
           </svg> */}
-          <img
-            src={"./fastwave_color.png"}
-            alt="logo"
-            width={130}
-            height={130}
-          />
+          <img src={"./fastwave_bg.png"} alt="logo" width={130} height={130} />
         </div>
 
         <h1 className="text-3xl font-bold tracking-tight mb-2 text-center w-full">

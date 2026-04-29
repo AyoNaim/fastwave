@@ -21,6 +21,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import AccountUpgradeModal from "./UpgradeAccount";
+import SnapCards from "./SnapCards";
 
 // --- SERVICE ITEM COMPONENT ---
 const ServiceItem = ({
@@ -475,7 +477,7 @@ export default function FintechDashboard() {
       </div>
 
       <Card
-        className={`border-none rounded-[2.5rem] overflow-hidden mb-8 shadow-2xl transition-all duration-500 ${
+        className={`relative border-none rounded-[2.5rem] overflow-hidden mb-8 shadow-2xl transition-all duration-500 ${
           isDarkMode ? "bg-[#1c1425]" : "bg-white border border-slate-200"
         }`}
       >
@@ -542,8 +544,15 @@ export default function FintechDashboard() {
               </span>
             </div>
           </div>
+
+          {/* The Account Upgrade Modal Trigger */}
+          <AccountUpgradeModal />
         </CardContent>
       </Card>
+
+      {/* account number snap cards  */}
+
+      <SnapCards />
 
       <div
         className={`rounded-[2.5rem] p-8 grid grid-cols-3 gap-y-10 gap-x-4 relative border transition-all duration-500 shadow-xl ${

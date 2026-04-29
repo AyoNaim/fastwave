@@ -1,16 +1,18 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.fix.fastwave",
+  appId: "com.fastwave.app",
   appName: "Fastwave",
   webDir: "out",
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 3000,
       launchAutoHide: true,
-      backgroundColor: "#ffffffff",
+      backgroundColor: "#ffffff",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
     },
   },
 };

@@ -3,8 +3,6 @@ import * as React from "react";
 import {
   Drawer,
   DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
   DrawerTrigger,
   DrawerClose,
 } from "@/components/ui/drawer";
@@ -12,12 +10,12 @@ import { Check } from "lucide-react";
 
 const networks = [
   { id: "1", name: "MTN", icon: "/mtn-logo.svg", color: "bg-yellow-400" },
-  { id: "3", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
+  { id: "4", name: "Airtel", icon: "/airtel-logo.png", color: "bg-red-600" },
   { id: "2", name: "Glo", icon: "/glo-logo.png", color: "bg-green-600" },
   {
-    id: "4",
+    id: "3",
     name: "9mobile",
-    icon: "/9mobile-logo.png",
+    icon: "/mobile-logo.png",
     color: "bg-emerald-900",
   },
 ];
@@ -47,61 +45,55 @@ export function NetworkModal({ selected, onSelect, isDark }: any) {
             isDark ? "bg-zinc-800" : "bg-slate-200"
           }`}
         />
-        <DrawerHeader
-          className={`pb-4 border-b ${
-            isDark ? "border-zinc-900" : "border-slate-50"
-          }`}
-        >
-          <DrawerTitle
-            className={`text-center font-black uppercase tracking-widest text-xs ${
-              isDark ? "text-zinc-500" : "text-slate-400"
+
+        <div className="p-6">
+          <h3
+            className={`font-bold mb-4 ${
+              isDark ? "text-slate-200" : "text-slate-700"
             }`}
           >
-            Select Provider
-          </DrawerTitle>
-        </DrawerHeader>
+            Choose Network
+          </h3>
 
-        <div className="p-6 space-y-3">
-          {networks.map((net) => (
-            <DrawerClose key={net.id} asChild>
-              <div
-                onClick={() => onSelect(net)}
-                className={`flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer ${
-                  String(selected.id) === String(net.id)
-                    ? isDark
-                      ? "bg-white/5 border border-white/10"
-                      : "bg-slate-50 border border-slate-100"
-                    : isDark
-                    ? "hover:bg-zinc-900"
-                    : "hover:bg-slate-50"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${net.color}`}
-                  >
-                    <img
-                      src={net.icon}
-                      alt={net.name}
-                      className="w-8 h-8 object-contain"
-                    />
-                  </div>
-                  <span
-                    className={`text-lg font-black tracking-tight ${
-                      isDark ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    {net.name}
-                  </span>
+          {/* Horizontal layout matching the screenshot */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {networks.map((net) => (
+              <DrawerClose key={net.id} asChild>
+                <div
+                  onClick={() => onSelect(net)}
+                  className={`shrink-0 w-[72px] h-[72px] rounded-2xl flex items-center justify-center transition-all cursor-pointer border-2 ${
+                    String(selected.id) === String(net.id)
+                      ? "border-amber-400 bg-white" // The distinct gold/orange border from the screenshot
+                      : isDark
+                      ? "border-zinc-800 bg-zinc-900"
+                      : "border-slate-100 bg-white"
+                  }`}
+                >
+                  <img
+                    src={net.icon}
+                    alt={net.name}
+                    className="w-10 h-10 object-contain"
+                  />
                 </div>
-                {String(selected.id) === String(net.id) && (
-                  <div className="bg-emerald-500 rounded-full p-1">
-                    <Check className="text-white w-4 h-4" strokeWidth={4} />
-                  </div>
-                )}
+              </DrawerClose>
+            ))}
+          </div>
+
+          {/* The detected network span matching the screenshot */}
+          <div className="mt-8">
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium ${
+                isDark
+                  ? "bg-emerald-950/40 text-emerald-400"
+                  : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
+              <div className="bg-emerald-500 rounded-full p-[2px]">
+                <Check className="text-white w-2.5 h-2.5" strokeWidth={4} />
               </div>
-            </DrawerClose>
-          ))}
+              Detected: {selected.name.toUpperCase()} • Verified
+            </div>
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

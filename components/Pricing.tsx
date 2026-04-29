@@ -7,9 +7,7 @@ import {
   Tv,
   Zap,
   Search,
-  Info,
   Loader2,
-  ZapOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,10 +30,10 @@ export default function PricingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // SIMPLIFIED DATA STRUCTURE
   const [dataPlans, setDataPlans] = useState([]);
   const [cablePlans, setCablePlans] = useState([]);
 
+  // Mocked static data - kept simple as per existing code
   const airtimeData = [
     { network: "MTN", discount: "2% Off", status: "Instant" },
     { network: "Airtel", discount: "2% Off", status: "Instant" },
@@ -85,7 +83,6 @@ export default function PricingsPage() {
     }
   };
 
-  // CLEAN MAPPING LOGIC
   const mapNetwork = (id: any) => {
     const val = String(id);
     if (val === "1") return "MTN";
@@ -111,7 +108,6 @@ export default function PricingsPage() {
     router.back();
   };
 
-  // Search filter helper
   const filtered = (list: any[]) => {
     return list.filter((item) =>
       JSON.stringify(item).toLowerCase().includes(searchQuery.toLowerCase())
@@ -120,7 +116,6 @@ export default function PricingsPage() {
 
   if (!mounted) return null;
 
-  // REUSABLE UI WRAPPER FOR TABLES
   const TableContainer = ({ children }: { children: React.ReactNode }) => (
     <div
       className={`rounded-[2.5rem] overflow-x-auto border ${
@@ -129,11 +124,11 @@ export default function PricingsPage() {
           : "bg-white border-slate-100 shadow-xl"
       }`}
     >
-      <Table>{children}</Table>
+      <Table className="min-w-[600px]">{children}</Table>
     </div>
   );
 
-  const Header = ({ h1, h2, h3, h4, h5 }: any) => (
+  const PricingHeader = ({ h1, h2 }: { h1: string; h2: string }) => (
     <TableHeader className={isDarkMode ? "bg-white/5" : "bg-slate-50/50"}>
       <TableRow className="border-none">
         <TableHead className="font-black text-[9px] uppercase tracking-widest px-6 h-12">
@@ -142,18 +137,14 @@ export default function PricingsPage() {
         <TableHead className="font-black text-[9px] uppercase tracking-widest h-12">
           {h2}
         </TableHead>
-        {h4 && (
-          <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
-            {h4}
-          </TableHead>
-        )}
-        {h5 && (
-          <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
-            {h5}
-          </TableHead>
-        )}
+        <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
+          Agent Price
+        </TableHead>
+        <TableHead className="font-black text-[9px] uppercase tracking-widest h-12 text-center">
+          Vendor Price
+        </TableHead>
         <TableHead className="font-black text-[9px] uppercase tracking-widest text-right px-6 h-12">
-          {h3}
+          User Price
         </TableHead>
       </TableRow>
     </TableHeader>
@@ -165,7 +156,6 @@ export default function PricingsPage() {
         isDarkMode ? "bg-[#0f0a14] text-white" : "bg-slate-50 text-slate-900"
       }`}
     >
-      {/* Header UI */}
       <header className="px-5 flex justify-between items-center py-6 sticky top-0 z-30 backdrop-blur-xl">
         <Button
           onClick={handleBack}
@@ -257,13 +247,7 @@ export default function PricingsPage() {
               {/* DATA TAB */}
               <TabsContent value="data">
                 <TableContainer>
-                  <Header
-                    h1="Network"
-                    h2="Plan"
-                    h4="AGENT PRICE"
-                    h5="VENDOR PRICE"
-                    h3="USER PRICE"
-                  />
+                  <PricingHeader h1="Network" h2="Plan" />
                   <TableBody>
                     {filtered(dataPlans).map((item: any, i) => (
                       <TableRow
@@ -278,11 +262,11 @@ export default function PricingsPage() {
                               isDarkMode ? "bg-white/5" : "bg-slate-100"
                             }`}
                           >
-                            {mapNetwork(item.datanetwork || item.network_id)}
+                            {mapNetwork(item.datanetwork)}
                           </span>
                         </TableCell>
                         <TableCell className="text-[13px] font-bold">
-                          {item.name || item.plan_name}
+                          {item.name}
                         </TableCell>
                         <TableCell className="text-center text-[13px] font-bold opacity-70">
                           ₦{item.agentprice}
@@ -291,7 +275,7 @@ export default function PricingsPage() {
                           ₦{item.vendorprice}
                         </TableCell>
                         <TableCell className="text-right px-6 font-black text-emerald-500">
-                          ₦{item.price || item.userprice}
+                          ₦{item.userprice}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -302,7 +286,21 @@ export default function PricingsPage() {
               {/* AIRTIME TAB */}
               <TabsContent value="airtime">
                 <TableContainer>
-                  <Header h1="Network" h2="Bonus" h3="Status" />
+                  <TableHeader
+                    className={isDarkMode ? "bg-white/5" : "bg-slate-50/50"}
+                  >
+                    <TableRow className="border-none">
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest px-6 h-12">
+                        Network
+                      </TableHead>
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest h-12">
+                        Discount
+                      </TableHead>
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest text-right px-6 h-12">
+                        Status
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
                     {filtered(airtimeData).map((item, i) => (
                       <TableRow
@@ -335,13 +333,7 @@ export default function PricingsPage() {
               {/* CABLE TAB */}
               <TabsContent value="cable">
                 <TableContainer>
-                  <Header
-                    h1="Provider"
-                    h2="Package"
-                    h4="AGENT PRICE"
-                    h5="VENDOR PRICE"
-                    h3="USER PRICE"
-                  />
+                  <PricingHeader h1="Provider" h2="Package" />
                   <TableBody>
                     {filtered(cablePlans).map((item: any, i) => (
                       <TableRow
@@ -356,7 +348,7 @@ export default function PricingsPage() {
                               isDarkMode ? "bg-white/5" : "bg-slate-100"
                             }`}
                           >
-                            {mapCable(item.cableprovider || item.cablename)}
+                            {mapCable(item.cablename)}
                           </span>
                         </TableCell>
                         <TableCell className="text-[13px] font-bold">
@@ -369,7 +361,7 @@ export default function PricingsPage() {
                           ₦{item.vendorprice}
                         </TableCell>
                         <TableCell className="text-right px-6 font-black text-emerald-500">
-                          ₦{item.userprice || item.price}
+                          ₦{item.userprice}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -380,7 +372,21 @@ export default function PricingsPage() {
               {/* UTILITY TAB */}
               <TabsContent value="utility">
                 <TableContainer>
-                  <Header h1="Disco" h2="Type" h3="Min Pay" />
+                  <TableHeader
+                    className={isDarkMode ? "bg-white/5" : "bg-slate-50/50"}
+                  >
+                    <TableRow className="border-none">
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest px-6 h-12">
+                        Disco
+                      </TableHead>
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest h-12">
+                        Type
+                      </TableHead>
+                      <TableHead className="font-black text-[9px] uppercase tracking-widest text-right px-6 h-12">
+                        Min Pay
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
                     {filtered(electricityData).map((item, i) => (
                       <TableRow

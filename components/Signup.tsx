@@ -215,12 +215,7 @@ export default function PersonalDetailsScreen() {
               strokeLinecap="round"
             />
           </svg> */}
-          <img
-            src={"./fastwave_color.png"}
-            alt="logo"
-            width={130}
-            height={130}
-          />
+          <img src={"./fastwave_bg.png"} alt="logo" width={130} height={130} />
         </div>
 
         <h1 className="text-[32px] font-bold tracking-tight mb-3">

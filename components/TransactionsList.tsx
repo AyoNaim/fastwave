@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Smartphone,
   Gift,
@@ -28,10 +29,13 @@ interface Transaction {
   date: string;
 }
 
-const TransactionPage = () => {
+// Inner component to safely use useSearchParams
+const TransactionContent = () => {
+  const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [openRef, setOpenRef] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("app_theme");
@@ -55,6 +59,11 @@ const TransactionPage = () => {
         const result = await response.json();
         if (result.status === "success" && Array.isArray(result.data)) {
           setTransactions(result.data);
+
+          const refFromUrl = searchParams.get("ref");
+          if (refFromUrl) {
+            setOpenRef(refFromUrl);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch transactions:", error);
@@ -63,13 +72,8 @@ const TransactionPage = () => {
       }
     };
     loadTransactions();
-  }, []);
+  }, [searchParams]);
 
-  /**
-   * CORRECTED: Status Mapping
-   * Treats "0", "5", and "success" variants as Successful.
-   * Everything else defaults to Failed.
-   */
   const isSuccessful = (status: string | number) => {
     const s = String(status).toLowerCase().trim();
     return (
@@ -82,26 +86,19 @@ const TransactionPage = () => {
     );
   };
 
-  /**
-   * REFINED: Type Mapping
-   * Determines if the service is airtime, data, etc.
-   * used for both the list icons and the receipt data.
-   */
   const mapType = (
     service: string,
     desc: string
   ): "airtime" | "data" | "cable" | "electricity" => {
     const combined = (service + " " + desc).toLowerCase();
-
     if (
       combined.includes("data") ||
       combined.includes("gb") ||
       combined.includes("mb") ||
       combined.includes("sme") ||
       combined.includes("gifting")
-    ) {
+    )
       return "data";
-    }
     if (
       combined.includes("tv") ||
       combined.includes("cable") ||
@@ -109,33 +106,48 @@ const TransactionPage = () => {
       combined.includes("gotv") ||
       combined.includes("showmax") ||
       combined.includes("startimes")
-    ) {
+    )
       return "cable";
-    }
     if (
       combined.includes("electric") ||
       combined.includes("power") ||
       combined.includes("meter") ||
       combined.includes("ekedc") ||
       combined.includes("ikedc")
-    ) {
+    )
       return "electricity";
-    }
     return "airtime";
+  };
+
+  const parseRecipient = (desc: string, serviceName: string) => {
+    const text = desc.trim();
+    const emailMatch = text.match(
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/
+    );
+    if (emailMatch) return emailMatch[0];
+    const phoneMatch = text.match(/(070|080|081|090|091|020)\d{8}/);
+    if (phoneMatch) return phoneMatch[0];
+    const idMatch = text.match(/(?:to|for|id|account)\s+([a-zA-Z0-9]{5,})/i);
+    if (idMatch) return idMatch[1];
+    const fallbackNumbers = text.match(/\d{5,}/g);
+    if (fallbackNumbers) return fallbackNumbers[fallbackNumbers.length - 1];
+    return "N/A";
+  };
+
+  const extractDataVolume = (desc: string) => {
+    const match = desc.match(/(\d+(?:\.\d+)?\s*(?:GB|MB|TB|KB))/i);
+    return match ? match[0].toUpperCase().replace(/\s/g, "") : null;
   };
 
   const getIcon = (service: string, desc: string) => {
     const type = mapType(service, desc);
     const s = (service + " " + desc).toLowerCase();
-
     if (type === "data") return <Wifi className="text-blue-500" size={18} />;
     if (type === "cable") return <Tv className="text-orange-500" size={18} />;
     if (type === "electricity")
       return <Zap className="text-yellow-500" size={18} />;
-
     if (s.includes("bonus") || s.includes("interest") || s.includes("refund"))
       return <Gift className="text-emerald-500" size={18} />;
-
     return <Smartphone className="text-zinc-400" size={18} />;
   };
 
@@ -188,9 +200,22 @@ const TransactionPage = () => {
           transactions.map((tx) => {
             const success = isSuccessful(tx.status);
             const transactionType = mapType(tx.servicename, tx.servicedesc);
+            const recipient = parseRecipient(tx.servicedesc, tx.servicename);
+            const dataVolume = extractDataVolume(tx.servicedesc);
+            const mainDisplayAmount =
+              transactionType === "data" && dataVolume
+                ? dataVolume
+                : `₦${Math.abs(parseFloat(tx.amount)).toLocaleString()}`;
 
             return (
-              <Dialog key={tx.transref}>
+              <Dialog
+                key={tx.transref}
+                open={openRef === tx.transref}
+                onOpenChange={(isOpen) => {
+                  if (isOpen) setOpenRef(tx.transref);
+                  else setOpenRef(null);
+                }}
+              >
                 <DialogTrigger asChild>
                   <div
                     className={`flex items-center gap-4 p-4 rounded-[1.25rem] cursor-pointer transition-all active:scale-[0.97] border ${
@@ -206,7 +231,6 @@ const TransactionPage = () => {
                     >
                       {getIcon(tx.servicename, tx.servicedesc)}
                     </div>
-
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[13px] font-bold truncate leading-tight">
                         {tx.servicedesc}
@@ -219,14 +243,13 @@ const TransactionPage = () => {
                         {tx.date}
                       </p>
                     </div>
-
                     <div className="text-right shrink-0">
                       <p
                         className={`text-sm font-black ${
                           isDarkMode ? "text-white" : "text-slate-900"
                         }`}
                       >
-                        ₦{Math.abs(parseFloat(tx.amount)).toLocaleString()}
+                        {mainDisplayAmount}
                       </p>
                       <div className="flex items-center justify-end gap-1 mt-0.5">
                         <span
@@ -241,7 +264,6 @@ const TransactionPage = () => {
                     </div>
                   </div>
                 </DialogTrigger>
-
                 <DialogContent
                   className={`max-w-[92vw] rounded-[2rem] p-0 border-none overflow-hidden ${
                     isDarkMode ? "bg-[#1c1425]" : "bg-white"
@@ -253,12 +275,15 @@ const TransactionPage = () => {
                       isDark={isDarkMode}
                       data={{
                         id: tx.transref,
-                        amount: Math.abs(parseFloat(tx.amount)).toString(),
-                        // Explicitly pass "success" or "failed" as the receipt component expects
+                        amount:
+                          transactionType === "data" && dataVolume
+                            ? dataVolume
+                            : Math.abs(parseFloat(tx.amount)).toString(),
+                        cost: Math.abs(parseFloat(tx.amount)).toString(),
                         status: success ? "success" : "failed",
                         type: transactionType,
                         provider: tx.servicename,
-                        recipient: tx.servicedesc.match(/\d+/)?.[0] || "N/A",
+                        recipient: recipient,
                         date: tx.date,
                         ref: tx.transref,
                       }}
@@ -271,6 +296,23 @@ const TransactionPage = () => {
         )}
       </main>
     </div>
+  );
+};
+
+// Main Page with Suspense Boundary for build compliance
+const TransactionPage = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-[#0f0a14]">
+          <div className="animate-pulse font-black tracking-widest uppercase text-[10px] text-white">
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <TransactionContent />
+    </Suspense>
   );
 };
 

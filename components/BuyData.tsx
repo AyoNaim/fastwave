@@ -1,17 +1,27 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, Loader2, XCircle, CheckCircle2 } from "lucide-react";
+import {
+  ChevronLeft,
+  Loader2,
+  XCircle,
+  CheckCircle2,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { NetworkModal } from "./NetworkModal";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const NETWORK_DATA = [
   {
     id: "1",
     name: "MTN",
     prefixes: [
+      "0803",
+      "07025",
+      "07026",
       "0803",
       "0806",
       "0703",
@@ -38,7 +48,7 @@ const NETWORK_DATA = [
     color: "bg-green-500",
   },
   {
-    id: "3",
+    id: "4",
     name: "AIRTEL",
     prefixes: [
       "0802",
@@ -48,7 +58,10 @@ const NETWORK_DATA = [
       "0701",
       "0902",
       "0901",
+      "0904",
       "0907",
+      "0912",
+      "0911",
       "0912",
       "0917",
     ],
@@ -56,7 +69,7 @@ const NETWORK_DATA = [
     color: "bg-red-500",
   },
   {
-    id: "4",
+    id: "3",
     name: "9MOBILE",
     prefixes: ["0809", "0817", "0818", "0909", "0908"],
     icon: "/9mobile-logo.svg",
@@ -69,6 +82,7 @@ export default function BuyDataPage() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [balance, setBalance] = useState("0.00");
+  const [userType, setUserType] = useState("User");
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingPlans, setIsFetchingPlans] = useState(true);
   const [allPlans, setAllPlans] = useState<any[]>([]);
@@ -79,11 +93,17 @@ export default function BuyDataPage() {
     text: string;
   } | null>(null);
 
+  // PIN Modal States
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+
   const syncDataFromStorage = useCallback(() => {
     const raw = localStorage.getItem("user_session");
     if (raw) {
       const session = JSON.parse(raw);
       setBalance(session.user_data?.balance || "0.00");
+      setUserType(session.user_data?.level || "User");
     }
   }, []);
 
@@ -140,7 +160,6 @@ export default function BuyDataPage() {
     const savedTheme = localStorage.getItem("app_theme");
     setIsDarkMode(savedTheme !== "light");
 
-    // Initial Page Load: Sync and Refresh
     syncDataFromStorage();
     handleRefresh();
     fetchPlans();
@@ -193,42 +212,53 @@ export default function BuyDataPage() {
     setIsManualNetwork(true);
   };
 
-  const handlePurchase = async (e: React.MouseEvent, plan: any) => {
+  const getPriceByLevel = (plan: any) => {
+    const level = userType.toLowerCase();
+    if (level === "vendor") return plan.vendorprice;
+    if (level === "agent") return plan.agentprice;
+    return plan.userprice;
+  };
+
+  const handlePurchase = (e: React.MouseEvent, plan: any) => {
     e.stopPropagation();
     if (phoneNumber.length < 11) {
       setMessage({ type: "error", text: "Enter valid 11-digit phone number" });
+      setTimeout(() => setMessage(null), 5000);
       return;
     }
+    setSelectedPlan(plan);
+    setShowPinModal(true);
+  };
+
+  const confirmPurchase = async () => {
+    if (pin.length < 5) return;
 
     setIsLoading(true);
+    setShowPinModal(false);
     setMessage(null);
     await Haptics.impact({ style: ImpactStyle.Heavy });
 
     try {
-      const lagosTime = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Africa/Lagos",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-      const [d, m, y] = lagosTime.split("/");
-      const authToken = `Token ${y}${m}${d}`;
+      const authToken = localStorage.getItem("userToken");
+      const priceToDebit = getPriceByLevel(selectedPlan);
 
       const payload = {
         network: String(selectedNetwork.id),
         phone: phoneNumber,
         ref: `DATA_${Date.now()}`,
-        amount: String(plan.userprice),
-        plan: String(plan.planid),
+        amount: String(priceToDebit),
+        plan: String(selectedPlan.pId),
+        token: authToken,
+        pin: pin,
       };
 
       const response = await fetch(
-        "https://fastwave.com.ng/app/api/data/index.php",
+        "https://fastwave.com.ng/api/data_test/index.php",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: authToken,
+            Authorization: `Token ${authToken}`,
           },
           body: JSON.stringify(payload),
         }
@@ -237,11 +267,14 @@ export default function BuyDataPage() {
       const result = await response.json();
 
       if (result.status === "success" || result.status === "successful") {
+        const transRef = result.trans_ref;
         setMessage({
           type: "success",
           text: result.msg || "Purchased Successfully!",
         });
+
         await Haptics.notification({ type: NotificationType.Success });
+        setTimeout(() => router.push(`/transactions?ref=${transRef}`), 5000);
       } else {
         setMessage({ type: "error", text: result.msg || "Transaction Failed" });
         await Haptics.notification({ type: NotificationType.Error });
@@ -253,16 +286,16 @@ export default function BuyDataPage() {
       });
       await Haptics.notification({ type: NotificationType.Error });
     } finally {
-      // Refresh logic after transaction (successful or not)
+      setPin("");
       await handleRefresh();
       setIsLoading(false);
       setTimeout(() => setMessage(null), 6000);
     }
   };
 
-  const currentPlans = allPlans.filter(
-    (plan) => String(plan.datanetwork) === selectedNetwork.id
-  );
+  const currentPlans = allPlans
+    .filter((plan) => String(plan.datanetwork) === selectedNetwork.id)
+    .sort((a, b) => Number(getPriceByLevel(a)) - Number(getPriceByLevel(b)));
 
   return (
     <div
@@ -270,6 +303,105 @@ export default function BuyDataPage() {
         isDarkMode ? "bg-[#0f0a14] text-white" : "bg-slate-50 text-slate-900"
       }`}
     >
+      {/* PIN MODAL */}
+      {showPinModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div
+            className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl ${
+              isDarkMode
+                ? "bg-[#1c1425] border-white/10"
+                : "bg-white border-slate-200"
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
+                <Lock className="text-emerald-500" size={28} />
+              </div>
+              <h2 className="text-xl font-black tracking-tight mb-2 uppercase">
+                Security Check
+              </h2>
+              <p
+                className={`text-xs font-medium mb-8 ${
+                  isDarkMode ? "text-zinc-500" : "text-slate-400"
+                }`}
+              >
+                Please enter your transaction PIN to confirm purchase for{" "}
+                <span className="text-emerald-500">{phoneNumber}</span>
+              </p>
+
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                value={pin}
+                autoFocus
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="•••••"
+                className={`h-16 text-center text-3xl font-black tracking-[0.5em] rounded-2xl border-2 mb-6 ${
+                  isDarkMode
+                    ? "bg-black/20 border-white/5 focus:border-emerald-500"
+                    : "bg-slate-50 border-slate-100 focus:border-emerald-500"
+                }`}
+              />
+
+              <div className="flex gap-3 w-full">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowPinModal(false);
+                    setPin("");
+                  }}
+                  className="flex-1 h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmPurchase}
+                  disabled={pin.length < 5}
+                  className="flex-[2] h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20"
+                >
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW LOADING OVERLAY */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-300">
+          <div className="relative">
+            <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full animate-pulse" />
+            <div className="animate-pulse-scale">
+              <Image
+                src="/fastwave_bg.png"
+                alt="Logo"
+                width={105}
+                height={105}
+                className="relative z-10"
+              />
+            </div>
+          </div>
+          <style jsx global>{`
+            @keyframes pulse-scale {
+              0%,
+              100% {
+                transform: scale(1);
+                opacity: 0.8;
+              }
+              50% {
+                transform: scale(1.15);
+                opacity: 1;
+              }
+            }
+            .animate-pulse-scale {
+              animation: pulse-scale 1.5s ease-in-out infinite;
+            }
+          `}</style>
+        </div>
+      )}
+
       {message && (
         <div className="fixed top-10 left-5 right-5 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
           <div
@@ -392,7 +524,7 @@ export default function BuyDataPage() {
             <div
               key={plan.pId}
               onClick={(e) => !isLoading && handlePurchase(e, plan)}
-              className={`group rounded-[2rem] p-5 flex justify-between items-center gap-3 border transition-all cursor-pointer active:scale-90 w-full ${
+              className={`group rounded-[2rem] p-5 flex justify-between items-center gap-3 border transition-all cursor-pointer active:scale-95 w-full ${
                 isDarkMode
                   ? "bg-[#1c1425] border-white/5"
                   : "bg-white border-slate-100 shadow-sm"
@@ -419,17 +551,15 @@ export default function BuyDataPage() {
               </div>
               <Button
                 disabled={isLoading}
-                className={`rounded-xl font-black px-4 h-10 shrink-0 min-w-[80px] ${
-                  isDarkMode
-                    ? "bg-white text-black hover:bg-zinc-200"
-                    : "bg-slate-900 text-white hover:bg-slate-800"
+                className={`rounded-xl font-black px-4 h-10 shrink-0 min-w-[80px] pointer-events-none ${
+                  isDarkMode ? "bg-white text-black" : "bg-slate-900 text-white"
                 }`}
               >
-                {isLoading ? (
-                  <Loader2 className="animate-spin" size={16} />
-                ) : (
-                  `₦${plan.userprice}`
-                )}
+                {userType === "Vendor"
+                  ? `₦${plan.vendorprice}`
+                  : userType === "Agent"
+                  ? `₦${plan.agentprice}`
+                  : `₦${plan.userprice}`}
               </Button>
             </div>
           ))
