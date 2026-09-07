@@ -1,4 +1,4 @@
-name: Android Release APK Build
+name: Android Debug APK Build
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  android-release:
+  android-debug:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -36,16 +36,16 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build Unsigned Release APK
+      - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          # assembleRelease creates an APK with debugging disabled
-          bash ./gradlew assembleRelease
+          # assembleDebug creates an APK that is auto-signed for testing
+          bash ./gradlew assembleDebug
 
-      - name: Upload Unsigned APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: fastwave-unsigned-release-apk
-          # Path points to the release APK folder
-          path: android/app/build/outputs/apk/release/*.apk
+          name: fastwave-debug-apk
+          # Path points back to the debug folder
+          path: android/app/build/outputs/apk/debug/*.apk
