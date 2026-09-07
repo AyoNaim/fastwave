@@ -136,6 +136,11 @@ export default function SnapCards() {
         {/* --- CARD 1: MANUAL FUNDING (STATIC) --- */}
         <div className="min-w-[90%] sm:min-w-[400px] snap-center">
           <Card
+            style={{
+              backgroundImage: "url('/palmpay_earn.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "top center"
+            }}
             className={cn(
               "group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl",
               isDarkMode
@@ -223,6 +228,11 @@ export default function SnapCards() {
               className="min-w-[90%] sm:min-w-[400px] snap-center"
             >
               <Card
+                style={{
+                  backgroundImage: "url('/paga_bg.jpg')",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
                 className={cn(
                   "group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl",
                   isDarkMode
@@ -315,6 +325,11 @@ export default function SnapCards() {
           /* --- EMPTY STATE / GENERATE CARD --- */
           <div className="min-w-[85%] sm:min-w-[400px] snap-center">
             <Card
+              style={{
+                backgroundImage: "url('/path/to/placeholder-card3.jpg')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
               className={cn(
                 "group relative h-[220px] w-full border-dashed transition-all duration-500",
                 isDarkMode
