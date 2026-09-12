@@ -5,14 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   Copy,
-  Landmark,
   ShieldCheck,
   Sparkles,
   CheckCircle2,
   Plus,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner"; // Assuming sonner for toasts based on your logic
+import { toast } from "sonner";
 
 interface VirtualAccount {
   bankName: string;
@@ -105,9 +104,8 @@ export default function SnapCards() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Total cards = 1 (Manual) + (virtualAccounts OR 1 for the 'Generate' card)
-  const totalDots =
-    1 + (virtualAccounts.length > 0 ? virtualAccounts.length : 1);
+  // Total cards = Virtual Accounts (or 1 Generate Card) + 1 Promotional Card
+  const totalDots = (virtualAccounts.length > 0 ? virtualAccounts.length : 1) + 1;
 
   return (
     <div
@@ -133,94 +131,7 @@ export default function SnapCards() {
         className="flex w-full gap-4 overflow-x-auto pb-8 snap-x snap-mandatory px-6 no-scrollbar"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {/* --- CARD 1: MANUAL FUNDING (STATIC) --- */}
-        <div className="min-w-[90%] sm:min-w-[400px] snap-center">
-          <Card
-            style={{
-              backgroundImage: "url('/palmpay_earn.jpg')",
-              backgroundSize: "cover",
-              backgroundPosition: "top center"
-            }}
-            className={cn(
-              "group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl",
-              isDarkMode
-                ? "border-zinc-800 bg-zinc-950 text-white"
-                : "border-zinc-200 bg-white text-zinc-900"
-            )}
-          >
-            <div
-              className={cn(
-                "absolute -right-10 -top-10 h-40 w-40 rounded-full blur-[80px]",
-                isDarkMode ? "bg-blue-600/10" : "bg-blue-500/10"
-              )}
-            />
-            <CardContent className="relative flex h-full flex-col justify-between p-2">
-              <div className="flex justify-between items-start">
-                <div className="">
-                  <div className="flex items-center gap-2">
-                    <Landmark className="h-4 w-4 text-zinc-500" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
-                      Manual Funding
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold tracking-tight">
-                    PalmPay Bank
-                  </h3>
-                </div>
-                <div
-                  className={cn(
-                    "rounded-full px-3 py-1 text-[10px] border",
-                    isDarkMode
-                      ? "bg-zinc-900 border-zinc-800 text-zinc-400"
-                      : "bg-zinc-100 border-zinc-200 text-zinc-500"
-                  )}
-                >
-                  Standard
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div
-                  onClick={() => handleCopy("8035917659", "manual")}
-                  className={cn(
-                    "flex items-center justify-between cursor-pointer rounded-xl border p-4 transition-all",
-                    isDarkMode
-                      ? "bg-zinc-900/50 border-zinc-800/50"
-                      : "bg-zinc-50 border-zinc-100"
-                  )}
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] text-zinc-500 uppercase font-bold">
-                      Account Number
-                    </p>
-                    <p
-                      className={cn(
-                        "text-lg font-mono font-bold tracking-wider",
-                        isDarkMode ? "text-zinc-200" : "text-zinc-800"
-                      )}
-                    >
-                      8035917659
-                    </p>
-                  </div>
-                  {copied === "manual" ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  ) : (
-                    <Copy className="h-5 w-5 text-zinc-400" />
-                  )}
-                </div>
-                <p className="text-[11px] text-zinc-500 uppercase font-semibold">
-                  Name:{" "}
-                  <span
-                    className={isDarkMode ? "text-zinc-300" : "text-zinc-700"}
-                  >
-                    ThankGod Osolo
-                  </span>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* --- DYNAMIC VIRTUAL ACCOUNTS --- */}
+        {/* --- CARD 1: DYNAMIC VIRTUAL ACCOUNTS (OR GENERATE ACCOUNT) --- */}
         {virtualAccounts.length > 0 ? (
           virtualAccounts.map((acc, index) => (
             <div
@@ -233,86 +144,53 @@ export default function SnapCards() {
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
-                className={cn(
-                  "group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl",
-                  isDarkMode
-                    ? "border-zinc-800 bg-zinc-950 text-white shadow-[0_0_30px_-15px_rgba(168,85,247,0.15)]"
-                    : "border-zinc-200 bg-white text-zinc-900"
-                )}
+                className="group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl border-0"
               >
-                <div
-                  className={cn(
-                    "absolute -right-10 -top-10 h-40 w-40 rounded-full blur-[80px]",
-                    isDarkMode ? "bg-purple-600/10" : "bg-amber-400/10"
-                  )}
-                />
-                <CardContent className="relative flex h-full flex-col justify-between p-2">
+                {/* Dark overlay to ensure text is fully legible over the background image */}
+                <div className="absolute inset-0 bg-black/60 z-0 transition-opacity duration-300" />
+
+                <CardContent className="relative z-10 flex h-full flex-col justify-between p-4">
                   <div className="flex justify-between items-start">
-                    <div className="">
+                    <div>
                       <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-500" />
-                        <span
-                          className={cn(
-                            "text-[10px] font-bold uppercase tracking-[0.2em]",
-                            isDarkMode ? "text-amber-500/80" : "text-amber-600"
-                          )}
-                        >
+                        <Sparkles className="h-4 w-4 text-amber-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-400">
                           Instant Funding
                         </span>
                       </div>
-                      <h3 className="text-xl font-semibold tracking-tight">
+                      <h3 className="text-xl font-semibold tracking-tight text-white mt-1">
                         {acc.bankName}
                       </h3>
                     </div>
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold",
-                        isDarkMode
-                          ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
-                          : "bg-amber-50 border-amber-200 text-amber-600"
-                      )}
-                    >
+                    <div className="flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-3 py-1 text-[10px] font-bold text-amber-400 backdrop-blur-sm">
                       <ShieldCheck className="h-3 w-3" /> VIRTUAL
                     </div>
                   </div>
+
                   <div className="space-y-4">
                     <div
                       onClick={() =>
                         handleCopy(acc.accountNumber, `virt-${index}`)
                       }
-                      className={cn(
-                        "flex items-center justify-between cursor-pointer rounded-xl border p-4 transition-all",
-                        isDarkMode
-                          ? "bg-zinc-900/50 border-zinc-800/50"
-                          : "bg-zinc-50 border-zinc-100"
-                      )}
+                      className="flex items-center justify-between cursor-pointer rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm transition-all hover:bg-white/20 active:scale-[0.98]"
                     >
                       <div className="space-y-0.5">
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold">
+                        <p className="text-[10px] text-zinc-300 uppercase font-bold">
                           Account Number
                         </p>
-                        <p
-                          className={cn(
-                            "text-lg font-mono font-bold tracking-wider",
-                            isDarkMode ? "text-amber-100/90" : "text-zinc-800"
-                          )}
-                        >
+                        <p className="text-xl font-mono font-bold tracking-wider text-white">
                           {acc.accountNumber}
                         </p>
                       </div>
                       {copied === `virt-${index}` ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                       ) : (
-                        <Copy className="h-5 w-5 text-zinc-400" />
+                        <Copy className="h-5 w-5 text-zinc-300" />
                       )}
                     </div>
-                    <p className="text-[11px] text-zinc-500 font-semibold uppercase">
+                    <p className="text-[11px] text-zinc-300 font-semibold uppercase px-1">
                       Recipient:{" "}
-                      <span
-                        className={
-                          isDarkMode ? "text-zinc-300" : "text-zinc-700"
-                        }
-                      >
+                      <span className="text-white ml-1">
                         {acc.accountName}
                       </span>
                     </p>
@@ -325,11 +203,6 @@ export default function SnapCards() {
           /* --- EMPTY STATE / GENERATE CARD --- */
           <div className="min-w-[85%] sm:min-w-[400px] snap-center">
             <Card
-              style={{
-                backgroundImage: "url('/path/to/placeholder-card3.jpg')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
               className={cn(
                 "group relative h-[220px] w-full border-dashed transition-all duration-500",
                 isDarkMode
@@ -381,6 +254,25 @@ export default function SnapCards() {
           </div>
         )}
 
+        {/* --- CARD 2: PROMOTIONAL CARD --- */}
+        <div className="min-w-[90%] sm:min-w-[400px] snap-center">
+          <Card
+            style={{
+              backgroundImage: "url('/palmpay_resized.jpg')",
+              backgroundSize: "contain", /* Ensures the image fits entirely within the card */
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat", /* Prevents tiling if the image is smaller */
+            }}
+            className={cn(
+              "group relative h-[220px] w-full overflow-hidden transition-all duration-500 shadow-xl border-0",
+              isDarkMode ? "bg-zinc-950" : "bg-white" /* Blends letterboxing with the theme */
+            )}
+          >
+            {/* Keeping it purely visual/promotional as requested */}
+          </Card>
+        </div>
+
+        {/* Spacer for proper final scrolling */}
         <div className="min-w-[1px] pr-6" />
       </div>
 

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.fix.fastwave",
+  appId: "com.fixlink.fastwave",
   appName: "Fastwave",
   webDir: "out",
   plugins: {
